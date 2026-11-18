@@ -358,10 +358,18 @@ std::vector<DisplayTokenSpec> buildDisplayTokenSpecs(const Shortcut &shortcut) {
     if (modifiers.testFlag(modifier)) { tokens.emplace_back(modifierToken(modifier)); }
   };
 
-  appendModifier(Qt::MetaModifier);
-  appendModifier(Qt::ControlModifier);
-  appendModifier(Qt::AltModifier);
-  appendModifier(Qt::ShiftModifier);
+#ifdef Q_OS_MACOS
+  constexpr auto HYPER = Qt::MetaModifier | Qt::ControlModifier | Qt::AltModifier | Qt::ShiftModifier;
+  if (!modifierKey && (modifiers & HYPER) == HYPER) {
+    tokens.emplace_back(DisplayTokenSpec{.text = QStringLiteral("✦"), .label = QStringLiteral("Hyper")});
+  } else
+#endif
+  {
+    appendModifier(Qt::MetaModifier);
+    appendModifier(Qt::ControlModifier);
+    appendModifier(Qt::AltModifier);
+    appendModifier(Qt::ShiftModifier);
+  }
 
   if (!modifierKey) {
     if (auto token = keyToken(shortcut.key())) {

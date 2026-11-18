@@ -15,6 +15,9 @@
 #include "builtins/developer/developer-extension.hpp"
 #include "builtins/raycast/raycast-compat-extension.hpp"
 #include "builtins/wm/wm-extension.hpp"
+#ifdef Q_OS_MACOS
+#include "builtins/hyper-key/hyper-key-extension.hpp"
+#endif
 #include "builtins/vicinae/vicinae-extension.hpp"
 #include "builtins/system/system-extension.hpp"
 #include "builtins/ai/ai-extension.hpp"
@@ -48,6 +51,9 @@ CommandDatabase::CommandDatabase(const ServiceRegistry &services) {
   registerRepository<ShortcutExtension>();
 
   registerRepository<WindowManagementExtension>(services);
+#ifdef Q_OS_MACOS
+  registerRepository<HyperKeyExtension>();
+#endif
 
   registerRepository<ThemeExtension>();
   registerRepository<FontExtension>();

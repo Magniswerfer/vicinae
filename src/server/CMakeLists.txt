@@ -957,6 +957,10 @@ if (APPLE)
 		src/services/window-manager/macos/macos-window.mm
 		src/services/window-manager/macos/macos-window-manager.hpp
 		src/services/window-manager/macos/macos-window-manager.mm
+		src/services/hyper-key/macos-hyper-key.hpp
+		src/services/hyper-key/macos-hyper-key.mm
+		src/builtins/hyper-key/hyper-key-extension.hpp
+		src/builtins/hyper-key/hyper-key-extension.cpp
 		src/services/wallpaper/macos/mac-wallpaper-backend.hpp
 		src/services/wallpaper/macos/mac-wallpaper-backend.mm
 		src/services/snippet/macos-snippet-server.hpp
@@ -996,6 +1000,7 @@ if (APPLE)
 		src/services/power-manager/macos/macos-power-manager.mm
 		src/services/window-manager/macos/macos-window.mm
 		src/services/window-manager/macos/macos-window-manager.mm
+		src/services/hyper-key/macos-hyper-key.mm
 		src/services/snippet/macos-snippet-server.mm
 		src/services/update/macos-update-installer.mm
 		src/services/permissions/macos-permission-service.mm
@@ -1744,7 +1749,7 @@ endif()
 
 target_link_libraries(${TARGET} PRIVATE ${LIBS})
 if(APPLE)
-	target_link_libraries(${TARGET} PRIVATE "-framework AppKit" "-framework AVFoundation" "-framework QuartzCore" "-framework UniformTypeIdentifiers" "-framework Carbon" "-framework CoreServices" "-framework ApplicationServices" "-framework CoreAudio" "-framework CoreFoundation" "-framework Security" "-F/System/Library/PrivateFrameworks" "-framework login")
+	target_link_libraries(${TARGET} PRIVATE "-framework AppKit" "-framework AVFoundation" "-framework QuartzCore" "-framework UniformTypeIdentifiers" "-framework Carbon" "-framework CoreServices" "-framework ApplicationServices" "-framework CoreAudio" "-framework CoreFoundation" "-framework IOKit" "-framework Security" "-F/System/Library/PrivateFrameworks" "-framework login")
 endif()
 
 if(APPLE AND DEFINED ENV{VICINAE_CODESIGN_IDENTITY})
