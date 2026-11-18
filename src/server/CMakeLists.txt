@@ -359,6 +359,11 @@ set(SRCS
 
 	src/builtins/wm/wm-extension.hpp
 	src/builtins/wm/wm-extension.cpp
+	src/builtins/wm/wm-preferences.hpp
+	src/builtins/wm/window-layout.hpp
+	src/builtins/wm/window-layout.cpp
+	src/builtins/wm/window-layout-commands.hpp
+	src/builtins/wm/window-layout-commands.cpp
 
 	src/builtins/clipboard/clipboard-preferences.hpp
 	src/builtins/clipboard/clipboard-extension.hpp
@@ -1820,6 +1825,8 @@ if (BUILD_TESTS AND UNIX AND NOT APPLE)
 		tests/pactl-audio-control.cpp
 		tests/clipboard-mime.cpp
 		tests/extension-manifest.cpp
+		src/builtins/wm/window-layout.cpp
+		tests/window-layout.cpp
 	)
 	target_link_libraries(${TEST_TARGET} PRIVATE vicinae::common Qt6::Concurrent glaze::glaze)
 	target_link_libraries(${TEST_TARGET} PRIVATE Catch2::Catch2WithMain Qt6::Core Qt6::Gui)

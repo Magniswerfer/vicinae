@@ -6,12 +6,14 @@
 #include "services/toast/toast-service.hpp"
 #include "builtins/wm/switch-windows-view-host.hpp"
 #include "builtins/wm/switch-workspaces-view-host.hpp"
+#include "builtins/wm/window-layout-commands.hpp"
 #include "ui/image/url.hpp"
 #include "command/single-view-command-context.hpp"
 #include "theme/theme.hpp"
 #include <qcontainerfwd.h>
 #include "theme/colors.hpp"
 #include <QCoreApplication>
+#include <utility>
 
 namespace {
 const auto COLOR = SemanticColor::Blue;
@@ -122,6 +124,12 @@ WindowManagementExtension::WindowManagementExtension(const ServiceRegistry &serv
   if (wm->supports(Cap::ToggleFloating)) { registerCommand<ToggleFloatingWindowCommand>(); }
   if (wm->supports(Cap::ToggleOverview)) { registerCommand<ToggleOverviewCommand>(); }
   if (wm->supports(AbstractWindowManager::Capability::SetSticky)) {}
+
+  if (wm->supportsSetWindowBounds()) {
+    [this]<std::size_t... I>(std::index_sequence<I...>) {
+      (registerCommand<WindowLayoutCommand<I>>(), ...);
+    }(std::make_index_sequence<window_layout_detail::SPECS.size()>{});
+  }
 }
 
 QString WindowManagementExtension::id() const { return "wm"; }

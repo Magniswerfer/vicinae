@@ -13,4 +13,8 @@ namespace vicinae::permissions {
 MicrophoneStatus microphoneStatus() { return MicrophoneStatus::Granted; }
 void requestMicrophone(std::function<void(bool)> done) { done(true); }
 void openMicrophoneSettings() {}
+bool accessibilityGranted() { return true; }
+bool requestAccessibility() { return true; }
+bool inputMonitoringGranted() { return true; }
+bool requestInputMonitoring() { return true; }
 } // namespace vicinae::permissions

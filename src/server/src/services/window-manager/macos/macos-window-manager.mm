@@ -396,6 +396,13 @@ static std::optional<CGDirectDisplayID> windowDisplayId(QWindow *window) {
   return screenDisplayId(screen);
 }
 
+// Cocoa screen frames are bottom-left based relative to the primary screen, while AX window positions
+// and CGDisplayBounds are top-left based.
+static QRect cocoaToGlobalRect(NSRect rect, CGFloat primaryHeight) {
+  return {qRound(rect.origin.x), qRound(primaryHeight - (rect.origin.y + rect.size.height)),
+          qRound(rect.size.width), qRound(rect.size.height)};
+}
+
 std::vector<AbstractWindowManager::Screen> MacosWindowManager::listScreensSync(QWindow *activeWindow) const {
   std::vector<Screen> screens;
 
@@ -403,6 +410,7 @@ std::vector<AbstractWindowManager::Screen> MacosWindowManager::listScreensSync(Q
     auto activeDisplay = windowDisplayId(activeWindow);
     NSArray<NSScreen *> *nsScreens = [NSScreen screens];
     screens.reserve(nsScreens.count);
+    const CGFloat primaryHeight = nsScreens.count > 0 ? nsScreens.firstObject.frame.size.height : 0;
 
     for (NSScreen *nsScreen in nsScreens) {
       auto display = screenDisplayId(nsScreen);
@@ -411,6 +419,7 @@ std::vector<AbstractWindowManager::Screen> MacosWindowManager::listScreensSync(Q
 
       Screen screen{.name = QString::fromNSString(nsScreen.localizedName),
                     .bounds = QRect(QPoint(qRound(bounds.origin.x), qRound(bounds.origin.y)), logicalSize),
+                    .workArea = cocoaToGlobalRect(nsScreen.visibleFrame, primaryHeight),
                     .physicalResolution =
                         displayScanoutSize(display).value_or(logicalSize * nsScreen.backingScaleFactor)};
       screen.active = activeDisplay == display;
@@ -504,8 +513,27 @@ bool MacosWindowManager::setWindowBounds(const AbstractWindow &window, const Win
     return false;
   }
 
+  // Apps with AXEnhancedUserInterface enabled (set by assistive tech) animate every geometry change,
+  // which makes the size and position updates race each other.
+  AXUIElementRef appElement = macWindow->pid() ? AXUIElementCreateApplication(*macWindow->pid()) : nullptr;
+  CFTypeRef enhancedUi = nullptr;
+  const bool hadEnhancedUi = appElement &&
+                             AXUIElementCopyAttributeValue(appElement, CFSTR("AXEnhancedUserInterface"),
+                                                           &enhancedUi) == kAXErrorSuccess &&
+                             enhancedUi == kCFBooleanTrue;
+  if (enhancedUi) CFRelease(enhancedUi);
+  if (hadEnhancedUi)
+    AXUIElementSetAttributeValue(appElement, CFSTR("AXEnhancedUserInterface"), kCFBooleanFalse);
+
+  // Size first so the window fits on the destination display, then position, then size again because
+  // the window server clamps the size against the display the window was on.
+  AXUIElementSetAttributeValue(element, kAXSizeAttribute, sizeValue);
   bool posOk = AXUIElementSetAttributeValue(element, kAXPositionAttribute, positionValue) == kAXErrorSuccess;
   bool sizeOk = AXUIElementSetAttributeValue(element, kAXSizeAttribute, sizeValue) == kAXErrorSuccess;
+
+  if (hadEnhancedUi)
+    AXUIElementSetAttributeValue(appElement, CFSTR("AXEnhancedUserInterface"), kCFBooleanTrue);
+  if (appElement) CFRelease(appElement);
 
   CFRelease(positionValue);
   CFRelease(sizeValue);

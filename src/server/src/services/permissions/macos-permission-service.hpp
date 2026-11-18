@@ -13,6 +13,16 @@ MicrophoneStatus microphoneStatus();
 void requestMicrophone(std::function<void(bool granted)> done);
 void openMicrophoneSettings();
 
+bool accessibilityGranted();
+// Shows the system Accessibility prompt when the permission is missing. Returns whether it is granted.
+bool requestAccessibility();
+
+// Input Monitoring: needed to receive keyboard events in an event tap. Without it a tap can be created
+// but never sees a keystroke.
+bool inputMonitoringGranted();
+// Shows the system Input Monitoring prompt when the permission is missing. Returns whether it is granted.
+bool requestInputMonitoring();
+
 } // namespace vicinae::permissions
 
 class MacosPermissionService : public QObject {

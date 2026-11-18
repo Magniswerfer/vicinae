@@ -34,6 +34,7 @@ public:
   bool supportsFocusTracking() const override { return true; }
   void focusWindowSync(const AbstractWindow &window) const override;
   bool closeWindow(const AbstractWindow &window) const override;
+  bool supportsSetWindowBounds() const override { return true; }
   bool setWindowBounds(const AbstractWindow &window, const WindowBounds &bounds) const override;
   void refresh() const override;
 

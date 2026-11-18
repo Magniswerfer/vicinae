@@ -67,6 +67,17 @@ void requestMicrophone(std::function<void(bool)> done) {
 
 void openMicrophoneSettings() { openPane(MICROPHONE_PANE_URL); }
 
+bool accessibilityGranted() { return AXIsProcessTrusted(); }
+
+bool requestAccessibility() {
+  NSDictionary *options = @{(__bridge NSString *)kAXTrustedCheckOptionPrompt : @YES};
+  return AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)options);
+}
+
+bool inputMonitoringGranted() { return CGPreflightListenEventAccess(); }
+
+bool requestInputMonitoring() { return CGRequestListenEventAccess(); }
+
 } // namespace vicinae::permissions
 
 MacosPermissionService::MacosPermissionService(QObject *parent) : QObject(parent) {

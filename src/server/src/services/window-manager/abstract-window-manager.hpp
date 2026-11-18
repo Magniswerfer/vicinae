@@ -59,6 +59,12 @@ public:
     QRect bounds;
 
     /**
+     * The part of `bounds` available to regular windows, excluding panels, docks and menu bars.
+     * Same coordinate space as window bounds.
+     */
+    QRect workArea;
+
+    /**
      * The real pixel size of the screen, unaffected by any kind of scaling.
      */
     QSize physicalResolution;
@@ -144,6 +150,7 @@ public:
     auto tr = [&](const QScreen *qtScreen) -> Screen {
       Screen sc{.name = qtScreen->name(),
                 .bounds = qtScreen->geometry(),
+                .workArea = qtScreen->availableGeometry(),
                 .physicalResolution = qtScreen->size() * qtScreen->devicePixelRatio(),
                 .manufacturer = qtScreen->manufacturer(),
                 .model = qtScreen->model()};
@@ -242,6 +249,11 @@ public:
   virtual bool supportsSetSticky() const { return false; }
   virtual bool setSticky(const AbstractWindow &window, bool sticky) const { return false; }
 
+  /**
+   * Whether `setWindowBounds` is implemented and `Screen::workArea` uses the same coordinate space as
+   * window bounds, which window layout commands rely on.
+   */
+  virtual bool supportsSetWindowBounds() const { return false; }
   virtual bool setWindowBounds(const AbstractWindow &window, const WindowBounds &bounds) const {
     return false;
   }
