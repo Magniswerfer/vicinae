@@ -14,17 +14,26 @@ set -euo pipefail
 
 SRC_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_DIR="$SRC_DIR/build-release"
-QT_VERSION="${QT_VERSION:-6.11.1}"
+# 6.11.2+ fixes QQuickPopupWindow dropping clicks and drags inside popups (QTBUG-146887).
+QT_VERSION="${QT_VERSION:-6.11.3}"
+QT_DIR="$HOME/Qt/$QT_VERSION/macos"
 IDENTITY="${VICINAE_CODESIGN_IDENTITY:-D9772E6279F32720C55D12784D5D876E0854379B}"
 TAG="$(git -C "$SRC_DIR" describe --tags --abbrev=0)-downstream"
 APP=/Applications/Vicinae.app
 
-echo "==> building $TAG"
+[[ -d "$QT_DIR" ]] || { echo "Qt $QT_VERSION not found at $QT_DIR (run: QT_VERSION=$QT_VERSION scripts/macos-setup.sh)" >&2; exit 1; }
+
+# CMake keeps the Qt6*_DIR entries it cached, so a different Qt needs a fresh configure.
+if ! grep -q "^Qt6_DIR:PATH=$QT_DIR/" "$BUILD_DIR/CMakeCache.txt" 2>/dev/null; then
+  rm -f "$BUILD_DIR/CMakeCache.txt"
+fi
+
+echo "==> building $TAG against Qt $QT_VERSION"
 cmake -S "$SRC_DIR" -B "$BUILD_DIR" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DLTO=ON \
   -DLOCAL_AI=ON \
-  -DQT_DIR="$HOME/Qt/$QT_VERSION/macos" \
+  -DQT_DIR="$QT_DIR" \
   -DVICINAE_GIT_TAG="$TAG"
 cmake --build "$BUILD_DIR" --parallel "$(sysctl -n hw.ncpu)"
 
