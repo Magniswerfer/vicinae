@@ -80,7 +80,7 @@ bool ClipboardService::copyContent(Clipboard::Content content, const Clipboard::
       },
   };
 
-  return std::visit(visitor, content);
+  return std::visit(visitor, std::move(content));
 }
 
 bool ClipboardService::copyFile(const std::filesystem::path &path, const Clipboard::CopyOptions &options) {
@@ -846,7 +846,9 @@ bool ClipboardService::copySelection(const ClipboardSelection &selection,
 
   if (!enrichedOptions.sourceApp) enrichedOptions.sourceApp = selection.sourceApp;
 
-  auto mimeData = Clipboard::mimeDataForSelection(selection);
+  std::unique_ptr<QMimeData> mimeData;
+  if (options.plainText) mimeData = Clipboard::plainTextMimeDataForSelection(selection);
+  if (!mimeData) mimeData = Clipboard::mimeDataForSelection(selection);
 
   return copyQMimeData(mimeData.release(), enrichedOptions);
 }

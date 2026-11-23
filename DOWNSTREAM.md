@@ -15,7 +15,12 @@ Remotes: `origin` is this fork and `upstream` is vicinaehq.
   center, resize, move, next/previous display and restore. Repeating a half cycles ½ → ⅔ → ⅓. Preferences cover the
   window gap, size cycling, and the Almost Maximize and Reasonable Size percentages.
 - **Hyper key** (Settings → Extensions → Hyper Key): Caps Lock acts as ⌘⌃⌥⇧ (Shift optional) and can be used in any
-  shortcut, where it shows as ✦. A quick press can send Escape.
+  shortcut, where it shows as ✦. A quick press can send Escape, and Shift+Caps Lock toggles the real Caps Lock.
+- **Clipboard quick paste** (Settings → Extensions → Clipboard → Clipboard History): with *Quick paste with the
+  hotkey* on, the history opens while the hotkey's modifiers are held, the key again or the arrows pick an item,
+  and letting go pastes it (the plain clipboard if nothing was picked, so a tap acts like ⌘V). Escape cancels.
+  Vicinae's other hotkeys are paused while it is open. *Paste as plain text* drops formatting from every paste
+  out of the history, with the other choice in the action panel.
 
 ## Updating from upstream
 

@@ -31,6 +31,10 @@ public:
   virtual bool isFallback() const { return false; }
   virtual void preferenceValuesChanged(const PreferenceValues &) const {}
   virtual bool isInternal() const { return false; }
+  /**
+   * Called when the command's global hotkey is pressed. Return true to handle it instead of launching.
+   */
+  virtual bool shortcutPressed(const ApplicationContext &) const { return false; }
   virtual void shortcutReleased(const ApplicationContext &) const {}
 
   /**

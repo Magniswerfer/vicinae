@@ -12,8 +12,10 @@
 #include <atomic>
 #include <chrono>
 #include <future>
+#include <utility>
 #include <QCoreApplication>
 #include <QDebug>
+#include "internal/keyboard/modifier-state.hpp"
 
 namespace {
 
@@ -74,6 +76,7 @@ CGEventRef tapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event
   if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
     state.hyperDown = false;
     state.capsToggleDown = false;
+    ModifierState::setSynthesizedHeld(false);
     if (CFMachPortRef tap = state.tap.load()) CGEventTapEnable(tap, true);
     return event;
   }
@@ -96,6 +99,7 @@ CGEventRef tapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event
       }
       if (!state.hyperDown) {
         state.hyperDown = true;
+        ModifierState::setSynthesizedHeld(true);
         state.used = false;
         state.pressedAt = now;
       }
@@ -108,11 +112,20 @@ CGEventRef tapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event
     }
 
     const bool tapped = state.hyperDown && !state.used && now - state.pressedAt < TAP_TIMEOUT;
-    state.hyperDown = false;
+    const bool wasDown = std::exchange(state.hyperDown, false);
+    ModifierState::setSynthesizedHeld(false);
     if (tapped && state.tapAction.load() == MacosHyperKey::TapAction::Escape) {
       postKeyPress(proxy, kVK_Escape);
     }
-    return nullptr;
+    if (!wasDown) return nullptr;
+
+    // The system keeps the modifiers of the last event it saw, which carried the Hyper ones: without a
+    // modifier change it would consider them held until the next key press, clicks included.
+    constexpr CGEventFlags ALL_MODIFIERS = HYPER_FLAGS_NO_SHIFT | kCGEventFlagMaskShift;
+    CGEventSetType(event, kCGEventFlagsChanged);
+    const CGEventFlags flags = CGEventGetFlags(event);
+    CGEventSetFlags(event, (flags & ~ALL_MODIFIERS) | ModifierState::physicalFlags(flags));
+    return event;
   }
 
   if (state.hyperDown) {
@@ -162,6 +175,7 @@ void runTap(MacosHyperKey::TapState &state, std::promise<bool> &ready) {
   }
 
   CGEventTapEnable(tap, false);
+  ModifierState::setSynthesizedHeld(false);
   CFRunLoopRemoveSource(loop, source, kCFRunLoopCommonModes);
   CFRelease(source);
   state.tap = nullptr;

@@ -38,6 +38,7 @@ void ConfigGlobalShortcuts::apply() {
                .description = describeCommand(eid),
                .onActivated =
                    [this, eid] {
+                     if (m_navigation.pressEntrypoint(eid)) { return; }
                      m_navigation.activateEntrypoint(eid, {.props = {.source = LaunchSource::Shortcut}});
                    },
                .onReleased = [this, eid] { m_navigation.releaseEntrypoint(eid); }}));

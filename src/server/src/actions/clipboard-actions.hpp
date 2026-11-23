@@ -37,6 +37,7 @@ class PasteToFocusedWindowAction : public AbstractAction {
 
 public:
   void setConcealed(bool value = true) { m_concealed = value; }
+  void setPlainText(bool value = true) { m_plainText = value; }
 
   QString title() const override {
     if (auto app = frontmostApp()) return tr("Paste to %1").arg(app->displayName());
@@ -55,7 +56,7 @@ public:
 protected:
   void execute(ApplicationContext *ctx) override {
     auto paste = ctx->services->pasteService();
-    paste->pasteContent(m_content, {.concealed = m_concealed});
+    paste->pasteContent(m_content, {.concealed = m_concealed, .plainText = m_plainText});
     ctx->navigation->closeWindow();
   }
 
@@ -69,4 +70,5 @@ private:
 
   Clipboard::Content m_content;
   bool m_concealed = false;
+  bool m_plainText = false;
 };

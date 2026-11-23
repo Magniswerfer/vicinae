@@ -1,6 +1,8 @@
+#include <QClipboard>
 #include <QGuiApplication>
 #include <QTimer>
 #include "paste-service.hpp"
+#include "services/clipboard/clipboard-mime.hpp"
 
 static constexpr int FOCUS_POLL_INTERVAL_MS = 5;
 static constexpr int FOCUS_POLL_MAX = 1000; // 5s max (1000 * FOCUS_POLL_INTERVAL_MS)
@@ -69,6 +71,26 @@ bool PasteService::pasteContent(const Clipboard::Content &content, const Clipboa
 
   if (!confirmable) beginPaste();
 
+  return true;
+}
+
+bool PasteService::pasteCurrentClipboard(bool plainText) {
+  if (!m_platform->supportsPaste()) return false;
+
+  if (plainText) {
+    auto selection = Clipboard::selectionFromMimeData(QGuiApplication::clipboard()->mimeData());
+    if (selection && Clipboard::plainTextMimeDataForSelection(*selection)) {
+      return pasteContent(*std::move(selection), {.concealed = true, .plainText = true});
+    }
+  }
+
+  m_focusPollTimer.stop();
+  m_copyWaitTimer.stop();
+  m_awaitingCopy = false;
+  m_target = Target::FocusHandoff;
+  m_pasteTimer.start();
+  m_hasPendingPaste = true;
+  beginPaste();
   return true;
 }
 

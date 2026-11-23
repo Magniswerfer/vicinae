@@ -54,6 +54,18 @@ public:
   Q_INVOKABLE void toggleMonitoring();
   Q_INVOKABLE void setKindFilter(int kind);
 
+  // Hold to paste: while the hotkey's modifiers stay held, only moving the highlight and cancelling are
+  // possible, and letting go pastes the highlighted item (see ClipboardHoldPaste).
+  void beginHoldMode();
+  void endHoldMode();
+  bool inHoldMode() const { return m_holdMode; }
+  void holdSelectNext();
+  void holdMove(int direction);
+  void holdCancel();
+  void pasteHighlighted();
+
+  bool eventFilter(QObject *watched, QEvent *event) override;
+
   SectionListModel *listModel() const override { return const_cast<SectionListModel *>(&m_model); }
   CompletionModel *kindFilterModel() { return &m_kindFilterModel; }
   QString itemCountText() const { return m_itemCountText; }
@@ -94,6 +106,7 @@ private:
   void unwatchDetailFile();
   void reloadChangedDetailFile();
   void saveDropdownFilter(const QString &value);
+  void moveSelection(int direction);
   std::optional<QString> getSavedDropdownFilter();
 
   SectionListModel m_model{this};
@@ -127,4 +140,12 @@ private:
   QString m_detailErrorTitle;
   QString m_detailErrorDescription;
   QStringList m_searchTerms;
+
+  QString m_selectedEntryId;
+  bool m_pastePlainText = false;
+  bool m_holdMode = false;
+  int m_pendingHoldSteps = 0;
+  bool m_holdMoved = false;
+  bool m_loaded = false;
+  bool m_pasteWhenLoaded = false;
 };

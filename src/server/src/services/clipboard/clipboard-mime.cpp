@@ -55,6 +55,20 @@ std::vector<ClipboardDataOffer>::const_iterator findPlainTextOffer(const Clipboa
   return selection.offers.end();
 }
 
+static std::optional<QString> plainTextForSelection(const ClipboardSelection &selection) {
+  if (auto it = findPlainTextOffer(selection); it != selection.offers.end()) {
+    return QString::fromUtf8(it->data);
+  }
+
+  if (auto it = findOffer(selection, QLatin1StringView("text/html")); it != selection.offers.end()) {
+    auto text = QTextDocumentFragment::fromHtml(QString::fromUtf8(it->data)).toPlainText();
+    text.remove(QChar::ObjectReplacementCharacter);
+    if (text = text.trimmed(); !text.isEmpty()) return text;
+  }
+
+  return std::nullopt;
+}
+
 std::unique_ptr<QMimeData> mimeDataForSelection(const ClipboardSelection &selection) {
   auto data = std::make_unique<QMimeData>();
 
@@ -66,17 +80,23 @@ std::unique_ptr<QMimeData> mimeDataForSelection(const ClipboardSelection &select
   // Qt derives the X11 text targets (UTF8_STRING, STRING...) from text/plain
   if (data->hasFormat("text/plain")) return data;
 
-  if (auto it = findPlainTextOffer(selection); it != selection.offers.end()) {
-    data->setText(QString::fromUtf8(it->data));
-    return data;
-  }
+  if (auto text = plainTextForSelection(selection)) data->setText(*text);
 
-  if (auto it = findOffer(selection, QLatin1StringView("text/html")); it != selection.offers.end()) {
-    auto text = QTextDocumentFragment::fromHtml(QString::fromUtf8(it->data)).toPlainText();
-    text.remove(QChar::ObjectReplacementCharacter);
-    if (text = text.trimmed(); !text.isEmpty()) data->setText(text);
-  }
+  return data;
+}
 
+std::unique_ptr<QMimeData> plainTextMimeDataForSelection(const ClipboardSelection &selection) {
+  const bool notText = std::ranges::any_of(selection.offers, [](const ClipboardDataOffer &offer) {
+    return offer.mimeType.startsWith("image/") ||
+           (offer.mimeType == "text/uri-list" && offer.data.startsWith("file:"));
+  });
+  if (notText) return nullptr;
+
+  auto text = plainTextForSelection(selection);
+  if (!text) return nullptr;
+
+  auto data = std::make_unique<QMimeData>();
+  data->setText(*text);
   return data;
 }
 

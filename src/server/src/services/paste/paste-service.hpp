@@ -25,6 +25,8 @@ public:
 
   bool pasteContent(const Clipboard::Content &content, const Clipboard::CopyOptions options = {},
                     Target target = Target::FocusHandoff);
+  // Paste what is already on the clipboard, as the OS paste shortcut would, once focus is handed off.
+  bool pasteCurrentClipboard(bool plainText = false);
   // Set on our own windows that are valid paste targets, unlike the launcher.
   static constexpr auto PASTE_TARGET_PROPERTY = "vicinaePasteTarget";
 

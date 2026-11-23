@@ -704,6 +704,14 @@ bool NavigationController::activateEntrypoint(const EntrypointId &id,
   return true;
 }
 
+bool NavigationController::pressEntrypoint(const EntrypointId &id) {
+  const auto *entrypoint = m_ctx.services->rootItemManager()->findItemById(id);
+  if (auto *ext = dynamic_cast<const CommandRootItem *>(entrypoint)) {
+    return ext->command()->shortcutPressed(m_ctx);
+  }
+  return false;
+}
+
 void NavigationController::releaseEntrypoint(const EntrypointId &id) {
   const auto *entrypoint = m_ctx.services->rootItemManager()->findItemById(id);
   if (auto *ext = dynamic_cast<const CommandRootItem *>(entrypoint)) {

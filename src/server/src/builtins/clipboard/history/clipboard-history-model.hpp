@@ -12,6 +12,7 @@ public:
 
   void setEntries(const PaginatedResponse<ClipboardHistoryEntry> &page);
   void setDefaultAction(DefaultAction action) { m_defaultAction = action; }
+  void setPastePlainText(bool value) { m_pastePlainText = value; }
 
   QString sectionName() const override { return {}; }
   int count() const override { return static_cast<int>(m_entries.size()); }
@@ -53,5 +54,6 @@ private:
 
   std::vector<ClipboardHistoryEntry> m_entries;
   DefaultAction m_defaultAction = DefaultAction::Copy;
+  bool m_pastePlainText = false;
   std::function<void(const ClipboardHistoryEntry &)> m_onEntrySelected;
 };

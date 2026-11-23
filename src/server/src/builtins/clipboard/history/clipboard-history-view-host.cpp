@@ -1,5 +1,6 @@
 #include "builtins/clipboard/history/clipboard-history-view-host.hpp"
 #include "builtins/clipboard/clipboard-preferences.hpp"
+#include "builtins/clipboard/history/clipboard-hold-paste.hpp"
 #include "builtins/clipboard/history/clipboard-history-controller.hpp"
 #include "ui/views/view-utils.hpp"
 #include "service-registry.hpp"
@@ -12,6 +13,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QKeyEvent>
 #include <QUrl>
 
 static QString kindLabel(ClipboardOfferKind kind) {
@@ -76,6 +78,7 @@ ClipboardHistoryViewHost::ClipboardHistoryViewHost() : ViewHostBase() {
 }
 
 ClipboardHistoryViewHost::~ClipboardHistoryViewHost() {
+  endHoldMode();
   if (m_clipman) m_clipman->resumeEviction();
 }
 
@@ -96,14 +99,19 @@ void ClipboardHistoryViewHost::initialize() {
   m_clipman->pauseEviction();
   m_model.setScope(ViewScope(context(), this));
 
-  m_section.setOnEntrySelected([this](const ClipboardHistoryEntry &e) { loadDetail(e); });
+  m_section.setOnEntrySelected([this](const ClipboardHistoryEntry &e) {
+    m_selectedEntryId = e.id;
+    loadDetail(e);
+  });
   m_model.addSource(&m_section);
 
   m_controller = new ClipboardHistoryController(m_clipman, this);
 
-  const auto defaultAction = command()->preferences<ClipboardHistoryPreferences>().defaultAction;
+  const auto &preferences = command()->preferences<ClipboardHistoryPreferences>();
+  m_pastePlainText = preferences.pastePlainText;
+  m_section.setPastePlainText(preferences.pastePlainText);
   m_section.setDefaultAction(context()->services->pasteService()->supportsPaste()
-                                 ? defaultAction
+                                 ? preferences.defaultAction
                                  : ClipboardHistorySection::DefaultAction::Copy);
 
   setSearchPlaceholderText(tr("Browse clipboard history..."));
@@ -128,6 +136,12 @@ void ClipboardHistoryViewHost::initialize() {
             if (incremental) m_model.refreshActionPanel();
             if (std::exchange(m_detailStale, false)) reloadDetail();
             handleDataRetrieved(page.totalCount);
+            m_loaded = true;
+            for (; m_pendingHoldSteps > 0 && m_section.count() > 0; --m_pendingHoldSteps) {
+              moveSelection(1);
+            }
+            m_pendingHoldSteps = 0;
+            if (std::exchange(m_pasteWhenLoaded, false)) pasteHighlighted();
           });
 
   connect(m_controller, &ClipboardHistoryController::dataLoadingChanged, this, &BaseView::setLoading);
@@ -150,6 +164,8 @@ void ClipboardHistoryViewHost::initialize() {
     m_currentKindFilter = filterIndexFromKind(it->second);
     m_controller->setKindFilter(it->second);
   }
+
+  ClipboardHoldPaste::instance()->viewCreated(this);
 }
 
 void ClipboardHistoryViewHost::loadInitialData() {
@@ -172,7 +188,114 @@ void ClipboardHistoryViewHost::updateSearchTerms(const QString &text) {
 
 void ClipboardHistoryViewHost::onReactivated() { m_model.refreshActionPanel(); }
 
-void ClipboardHistoryViewHost::beforePop() { m_model.beforePop(); }
+void ClipboardHistoryViewHost::beforePop() {
+  endHoldMode();
+  m_model.beforePop();
+}
+
+void ClipboardHistoryViewHost::beginHoldMode() {
+  if (m_holdMode) return;
+  m_holdMode = true;
+  QCoreApplication::instance()->installEventFilter(this);
+}
+
+void ClipboardHistoryViewHost::endHoldMode() {
+  if (!m_holdMode) return;
+  m_holdMode = false;
+  QCoreApplication::instance()->removeEventFilter(this);
+}
+
+void ClipboardHistoryViewHost::holdSelectNext() {
+  m_holdMoved = true;
+  if (m_section.count() == 0) {
+    ++m_pendingHoldSteps;
+    return;
+  }
+  moveSelection(1);
+}
+
+void ClipboardHistoryViewHost::holdMove(int direction) {
+  if (!m_holdMode) return;
+  m_holdMoved = true;
+  moveSelection(direction);
+}
+
+void ClipboardHistoryViewHost::holdCancel() {
+  if (!m_holdMode) return;
+  endHoldMode();
+  context()->navigation->closeWindow();
+}
+
+void ClipboardHistoryViewHost::moveSelection(int direction) {
+  if (const int next = m_model.nextSelectableIndex(m_model.selectedIndex(), direction); next >= 0) {
+    m_model.setSelectedIndex(next);
+  }
+}
+
+void ClipboardHistoryViewHost::pasteHighlighted() {
+  endHoldMode();
+
+  // Letting go without picking anything, a quick tap included, pastes the actual clipboard: it is not in the
+  // history when monitoring is paused or the source app is excluded or concealed it.
+  if (!m_holdMoved) {
+    context()->services->pasteService()->pasteCurrentClipboard(m_pastePlainText);
+    context()->navigation->closeWindow();
+    return;
+  }
+
+  // Picked before the first page arrived: paste once it does.
+  if (!m_loaded) {
+    m_pasteWhenLoaded = true;
+    return;
+  }
+
+  if (m_selectedEntryId.isEmpty()) {
+    context()->navigation->closeWindow();
+    return;
+  }
+
+  context()->services->pasteService()->pasteContent(Clipboard::SelectionRecordHandle(m_selectedEntryId),
+                                                    {.concealed = true, .plainText = m_pastePlainText});
+  context()->navigation->closeWindow();
+}
+
+bool ClipboardHistoryViewHost::eventFilter(QObject *watched, QEvent *event) {
+  if (!m_holdMode) return ViewHostBase::eventFilter(watched, event);
+
+  // Every key comes with the held modifiers, so none of them may reach the launcher's own shortcuts.
+  if (event->type() == QEvent::ShortcutOverride) {
+    event->accept();
+    return true;
+  }
+  if (event->type() != QEvent::KeyPress) return ViewHostBase::eventFilter(watched, event);
+
+  // NOLINTBEGIN(cppcoreguidelines-pro-type-static-cast-downcast)
+  const auto *keyEvent = static_cast<QKeyEvent *>(event);
+  // NOLINTEND(cppcoreguidelines-pro-type-static-cast-downcast)
+
+  switch (keyEvent->key()) {
+  case Qt::Key_Down:
+    holdMove(1);
+    break;
+  case Qt::Key_Up:
+    holdMove(-1);
+    break;
+  case Qt::Key_Escape:
+    holdCancel();
+    break;
+  case Qt::Key_Shift:
+  case Qt::Key_Control:
+  case Qt::Key_Meta:
+  case Qt::Key_Alt:
+  case Qt::Key_CapsLock:
+    break;
+  default:
+    // Pressing the hotkey's key again moves on, like Tab in an app switcher.
+    if (!keyEvent->isAutoRepeat()) holdMove(1);
+    break;
+  }
+  return true;
+}
 
 void ClipboardHistoryViewHost::toggleMonitoring() {
   command()->setPreferenceValues({{"monitoring", !m_clipman->monitoring()}});

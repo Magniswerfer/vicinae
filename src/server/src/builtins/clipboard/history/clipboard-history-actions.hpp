@@ -1,6 +1,7 @@
 #pragma once
 #include <QCoreApplication>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include "services/app-service/app-service.hpp"
@@ -13,6 +14,7 @@
 
 class PasteClipboardSelection : public PasteToFocusedWindowAction {
   QString m_id;
+  std::optional<QString> m_title;
   void execute(ApplicationContext *ctx) override {
     setConcealed();
     loadClipboardData(Clipboard::SelectionRecordHandle(m_id));
@@ -20,7 +22,13 @@ class PasteClipboardSelection : public PasteToFocusedWindowAction {
   }
 
 public:
-  PasteClipboardSelection(const QString &id) : PasteToFocusedWindowAction(), m_id(id) {}
+  QString title() const override { return m_title.value_or(PasteToFocusedWindowAction::title()); }
+
+  PasteClipboardSelection(const QString &id, bool plainText = false,
+                          std::optional<QString> title = std::nullopt)
+      : PasteToFocusedWindowAction(), m_id(id), m_title(std::move(title)) {
+    setPlainText(plainText);
+  }
 };
 
 class CopyClipboardSelection : public AbstractAction {

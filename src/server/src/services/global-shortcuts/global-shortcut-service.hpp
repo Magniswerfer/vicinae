@@ -68,6 +68,9 @@ public:
   // then replays them on release.
   void setCapturing(bool capturing);
 
+  // Unbinds every global shortcut while set, so their keys reach our own window instead.
+  void setSuspended(bool suspended);
+
 private:
   friend class GlobalShortcutHandle;
 
@@ -94,4 +97,5 @@ private:
   std::uint64_t m_nextSerial = 1;
   bool m_capturing = false;
   bool m_inhibited = false;
+  bool m_suspended = false;
 };

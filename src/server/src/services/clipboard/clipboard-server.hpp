@@ -12,6 +12,8 @@ namespace Clipboard {
 struct CopyOptions {
   bool concealed = false;
   bool transient = false;
+  // Drop formatting from text selections, keeping only their plain text.
+  bool plainText = false;
   std::optional<QString> sourceApp;
 };
 } // namespace Clipboard

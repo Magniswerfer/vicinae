@@ -81,6 +81,18 @@ void GlobalShortcutService::setCapturing(bool capturing) {
   }
 }
 
+void GlobalShortcutService::setSuspended(bool suspended) {
+  if (m_suspended == suspended) { return; }
+  m_suspended = suspended;
+  if (m_capturing || m_inhibited) { return; }
+
+  if (suspended) {
+    unbindAll();
+  } else {
+    reconcile();
+  }
+}
+
 void GlobalShortcutService::unbindAll() {
   m_backend->unbindAll();
   m_applied.clear();
@@ -99,7 +111,7 @@ void GlobalShortcutService::releaseHeld() {
 }
 
 void GlobalShortcutService::reconcile() {
-  if (m_capturing || m_inhibited) { return; }
+  if (m_capturing || m_inhibited || m_suspended) { return; }
   if (!isSupported()) { return; }
 
   for (auto it = m_applied.begin(); it != m_applied.end();) {
@@ -144,7 +156,7 @@ void GlobalShortcutService::updateInhibition() {
   if (inhibited == m_inhibited) { return; }
 
   m_inhibited = inhibited;
-  if (m_capturing) { return; }
+  if (m_capturing || m_suspended) { return; }
 
   if (inhibited) {
     unbindAll();

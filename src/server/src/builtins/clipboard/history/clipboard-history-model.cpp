@@ -134,7 +134,7 @@ std::unique_ptr<ActionPanelState> ClipboardHistorySection::actionPanel(int i) co
     copy->addShortcut(Keybind::CopyAction);
 
     if (pasteService->supportsPaste()) {
-      auto paste = new PasteClipboardSelection(entry.id);
+      auto paste = new PasteClipboardSelection(entry.id, m_pastePlainText);
       paste->addShortcut(Keybind::PasteAction);
       if (m_defaultAction == DefaultAction::Copy) {
         mainSection->addAction(copy);
@@ -142,6 +142,12 @@ std::unique_ptr<ActionPanelState> ClipboardHistorySection::actionPanel(int i) co
       } else {
         mainSection->addAction(paste);
         mainSection->addAction(copy);
+      }
+      if (entry.kind == ClipboardOfferKind::Text) {
+        const auto title =
+            m_pastePlainText ? QCoreApplication::translate("ClipboardHistorySection", "Paste with Formatting")
+                             : QCoreApplication::translate("ClipboardHistorySection", "Paste as Plain Text");
+        mainSection->addAction(new PasteClipboardSelection(entry.id, !m_pastePlainText, title));
       }
     } else {
       mainSection->addAction(copy);

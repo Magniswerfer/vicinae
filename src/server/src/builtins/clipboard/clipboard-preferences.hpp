@@ -106,6 +106,10 @@ public:
 
 struct ClipboardHistoryPreferences {
   ClipboardHistorySection::DefaultAction defaultAction = ClipboardHistorySection::DefaultAction::Paste;
+  bool pastePlainText = false;
+#ifdef Q_OS_MACOS
+  bool holdToPaste = false;
+#endif
 };
 
 template <> struct PreferenceSchema<ClipboardHistoryPreferences> {
@@ -126,4 +130,17 @@ public:
             return options;
           },
   };
+  PreferenceMeta pastePlainText{
+      .title = tr("Paste as plain text"),
+      .description = tr("Drop formatting such as fonts, colors and links when pasting text from the history"),
+  };
+#ifdef Q_OS_MACOS
+  PreferenceMeta holdToPaste{
+      .title = tr("Quick paste with the hotkey"),
+      .description =
+          tr("The history stays open while the hotkey's modifiers are held: press its key again or use "
+             "the arrow keys to pick an item, and let go to paste it. Letting go without picking pastes "
+             "the clipboard, so a quick tap works like the regular paste shortcut. Escape cancels."),
+  };
+#endif
 };

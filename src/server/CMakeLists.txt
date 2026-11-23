@@ -344,6 +344,10 @@ set(SRCS
 	src/internal/keyboard/keybind-manager.hpp
 	src/internal/keyboard/keybind-manager.cpp
 	src/internal/keyboard/keyboard.cpp
+	src/internal/keyboard/modifier-state.hpp
+	src/internal/keyboard/modifier-state.cpp
+	src/internal/keyboard/key-grab.hpp
+	src/internal/keyboard/key-grab.cpp
 	src/internal/keyboard/layout-resolver.hpp
 	src/internal/keyboard/layout-resolver.cpp
 
@@ -355,6 +359,8 @@ set(SRCS
 
 	src/builtins/clipboard/history/clipboard-history-controller.hpp
 	src/builtins/clipboard/history/clipboard-history-controller.cpp
+	src/builtins/clipboard/history/clipboard-hold-paste.hpp
+	src/builtins/clipboard/history/clipboard-hold-paste.cpp
 	src/builtins/browser/browser-extension.cpp
 
 	src/builtins/wm/wm-extension.hpp
