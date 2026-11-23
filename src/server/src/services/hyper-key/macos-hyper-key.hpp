@@ -13,6 +13,7 @@
  * property, the same mechanism `hidutil` uses. An active event tap then swallows F18 and adds the Hyper
  * modifiers to every key event while it is held. Because the modifiers are added before the window
  * server matches hot keys, Hyper combinations work for Carbon global shortcuts like any other modifier.
+ * Shift+Caps Lock toggles the real Caps Lock state.
  *
  * The tap runs on its own high priority thread so key delivery never waits on the main thread. It needs
  * the Accessibility permission.

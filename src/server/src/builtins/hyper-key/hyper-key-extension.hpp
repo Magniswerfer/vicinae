@@ -28,7 +28,8 @@ public:
   PreferenceMeta enabled{
       .title = tr("Use Caps Lock as Hyper key"),
       .description = tr("Holding Caps Lock presses Command, Control, Option and Shift at once, so it can be "
-                        "used in global shortcuts. Requires the Accessibility permission."),
+                        "used in global shortcuts. Press Shift+Caps Lock to toggle Caps Lock. Requires the "
+                        "Accessibility and Input Monitoring permissions."),
   };
   PreferenceMeta includeShift{
       .title = tr("Include Shift"),

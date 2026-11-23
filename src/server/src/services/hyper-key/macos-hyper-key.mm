@@ -5,6 +5,7 @@
 #include <Carbon/Carbon.h>
 #include <IOKit/hid/IOHIDProperties.h>
 #include <IOKit/hidsystem/IOHIDEventSystemClient.h>
+#include <IOKit/hidsystem/IOHIDLib.h>
 #include <IOKit/hidsystem/IOHIDParameter.h>
 #include <pthread.h>
 
@@ -35,10 +36,28 @@ struct MacosHyperKey::TapState {
   // Only touched on the tap thread.
   bool hyperDown = false;
   bool used = false;
+  bool capsToggleDown = false;
   std::chrono::steady_clock::time_point pressedAt;
+  io_connect_t hidSystem = IO_OBJECT_NULL;
 };
 
 namespace {
+
+void toggleCapsLock(MacosHyperKey::TapState &state) {
+  if (state.hidSystem == IO_OBJECT_NULL) {
+    io_service_t service =
+        IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching(kIOHIDSystemClass));
+    if (!service) return;
+    IOServiceOpen(service, mach_task_self(), kIOHIDParamConnectType, &state.hidSystem);
+    IOObjectRelease(service);
+    if (state.hidSystem == IO_OBJECT_NULL) return;
+  }
+
+  bool locked = false;
+  if (IOHIDGetModifierLockState(state.hidSystem, kIOHIDCapsLockState, &locked) == KERN_SUCCESS) {
+    IOHIDSetModifierLockState(state.hidSystem, kIOHIDCapsLockState, !locked);
+  }
+}
 
 void postKeyPress(CGEventTapProxy proxy, CGKeyCode key) {
   for (const bool down : {true, false}) {
@@ -54,6 +73,7 @@ CGEventRef tapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event
 
   if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
     state.hyperDown = false;
+    state.capsToggleDown = false;
     if (CFMachPortRef tap = state.tap.load()) CGEventTapEnable(tap, true);
     return event;
   }
@@ -68,11 +88,22 @@ CGEventRef tapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event
   if (keycode == F18_KEYCODE) {
     const auto now = std::chrono::steady_clock::now();
     if (type == kCGEventKeyDown) {
+      if (state.capsToggleDown) return nullptr;
+      if (!state.hyperDown && (CGEventGetFlags(event) & kCGEventFlagMaskShift)) {
+        state.capsToggleDown = true;
+        toggleCapsLock(state);
+        return nullptr;
+      }
       if (!state.hyperDown) {
         state.hyperDown = true;
         state.used = false;
         state.pressedAt = now;
       }
+      return nullptr;
+    }
+
+    if (state.capsToggleDown) {
+      state.capsToggleDown = false;
       return nullptr;
     }
 
@@ -120,6 +151,7 @@ void runTap(MacosHyperKey::TapState &state, std::promise<bool> &ready) {
   CFRunLoopAddSource(loop, source, kCFRunLoopCommonModes);
   state.tap = tap;
   state.hyperDown = false;
+  state.capsToggleDown = false;
   state.runLoop = static_cast<CFRunLoopRef>(const_cast<void *>(CFRetain(loop)));
   CGEventTapEnable(tap, true);
   ready.set_value(true);
@@ -136,6 +168,10 @@ void runTap(MacosHyperKey::TapState &state, std::promise<bool> &ready) {
   CFMachPortInvalidate(tap);
   CFRelease(tap);
   CFRelease(state.runLoop.exchange(nullptr));
+  if (state.hidSystem != IO_OBJECT_NULL) {
+    IOServiceClose(state.hidSystem);
+    state.hidSystem = IO_OBJECT_NULL;
+  }
 }
 
 NSString *const SRC_KEY = @kIOHIDKeyboardModifierMappingSrcKey;
